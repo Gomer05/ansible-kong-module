@@ -11,12 +11,12 @@ version = open('VERSION', 'r').read()
 setup(
     name='ansible-modules-kong',
     version=version,
-    description='Ansible Modules for Kong 0.14.x.',
+    description='Ansible Modules for Kong 1.5.x.',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    author='Timo Beckers',
-    author_email='timo.beckers@klarrio.com',
-    url='https://github.com/Klarrio/ansible-kong-module',
+    author='Mark Persohn',
+    author_email='mark@planetfind.com',
+    url='https://github.com/Gomer05/ansible-kong-module',
     packages=files,
-    install_requires=['ansible>=2.4.0', 'ansible-dotdiff'],
+    install_requires=['ansible>=2.9.0', 'ansible-dotdiff'],
 )

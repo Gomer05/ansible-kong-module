@@ -1,64 +1,58 @@
-"""
-ansible.modules.kong.kong_route performs Route operations on the Kong Admin API.
-
-:authors: Timo Beckers, Roman Komkov
-:license: MIT
-"""
-import requests
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.dotdiff import dotdiff
-from ansible.module_utils.kong.helpers import (kong_status_check,
-                                               kong_version_check,
-                                               params_fields_lookup,
-                                               render_list)
 from ansible.module_utils.kong.route import KongRoute
+from ansible.module_utils.kong.helpers import *
 
 DOCUMENTATION = '''
 ---
 module: kong_route
-short_description: Configure a Kong Route object on a Service.
+short_description: Configure a Kong Route object.
 '''
 
 EXAMPLES = '''
-- name: create a named Route
+- name: configure a Route
   kong_route:
     kong_admin_uri: http://localhost:8001
     service: mockbin
-    name: mockbin_com
-    hosts:
-      - mockbin.com
+    name: mockbin-route
+    paths:
+      - localhost
+    state: present
 
-- name: delete a named Route
+- name: delete an Route
   kong_route:
     kong_admin_uri: http://localhost:8001
     service: mockbin
-    name: mockbin_com
+    name: mockbin-route
+    hosts:
+      - localhost
     state: absent
 '''
 
 
 def main():
-    """Execute the Kong Route module."""
     ansible_module = AnsibleModule(
         argument_spec=dict(
             kong_admin_uri=dict(required=True, type='str'),
             kong_admin_username=dict(required=False, type='str'),
             kong_admin_password=dict(required=False, type='str', no_log=True),
             service=dict(required=True, type='str'),
-            name=dict(required=False, type='str'),
-            protocols=dict(required=False, default=['http', 'https'],
-                           choices=['http', 'https', 'tcp', 'tls'], type='list'),
-            methods=dict(required=False, default=[], type='list'),
-            hosts=dict(required=False, default=[], type='list'),
+            name=dict(required=True, type='str'),
+            protocols=dict(required=False, default=['http', 'https'], type='list'),
+            hosts=dict(required=False, type='list'),
             paths=dict(required=False, default=[], type='list'),
-            snis=dict(required=False, default=[], type='list'),
-            sources=dict(required=False, default=[], type='list'),
-            destinations=dict(required=False, default=[], type='list'),
+            methods=dict(required=False, default=[], type='list'),
             strip_path=dict(required=False, default=True, type='bool'),
             preserve_host=dict(required=False, default=False, type='bool'),
-            state=dict(required=False, default="present",
-                       choices=['present', 'absent'], type='str'),
+            state=dict(required=False, default="present", choices=['present', 'absent'], type='str'),
         ),
+        required_if=[
+            ('state', 'present', ['service']),
+            ('state', 'absent', ['service']),
+        ],
+        required_one_of=[
+            ('hosts', 'paths', 'methods')
+        ],
         supports_check_mode=True
     )
 
@@ -67,25 +61,19 @@ def main():
 
     # Emulates 'required_one_of' argument spec, as it cannot be made conditional
     if ansible_module.params['state'] == 'present' and \
-            not ansible_module.params['protocols'] and \
-            not ansible_module.params['methods'] and \
-            not ansible_module.params['hosts'] and \
-            not ansible_module.params['paths'] and \
-            not ansible_module.params['snis'] and \
-            not ansible_module.params['sources'] and \
-            not ansible_module.params['destinations']:
-        ansible_module.fail_json(
-            msg="At least one of protocols, methods, hosts, paths, snis, " +
-                "sources or destinations is required when state is 'present'")
+            ansible_module.params['protocols'] is None and \
+            ansible_module.params['methods'] is None and \
+            ansible_module.params['hosts'] is None and \
+            ansible_module.params['paths'] is None:
+        ansible_module.fail_json(msg="At least one of protocols, methods, hosts or paths is required when state is 'present'")
 
+    # Kong 0.14.x
     api_fields = [
+        'name',
         'protocols',
+        'methods',
         'hosts',
         'paths',
-        'methods',
-        'snis',
-        'sources',
-        'destinations',
         'strip_path',
         'preserve_host'
     ]
@@ -100,55 +88,37 @@ def main():
 
     # Extract other arguments
     service = ansible_module.params['service']
-    name = ansible_module.params['name']
     state = ansible_module.params['state']
+    name = ansible_module.params['name']
 
-    # Create Kong client instance.
+    # Create KongRoute client instance
     k = KongRoute(url, auth_user=auth_user, auth_pass=auth_pass)
+
+    # Contact Kong status endpoint
     kong_status_check(k, ansible_module)
-    kong_version_check(k, ansible_module)
 
     # Default return values
     changed = False
     resp = ''
 
-    orig = None
-    if name:
-        # Route name is given, only manage a named object.
-        orig = k.route_get(name)
-
-        # Pass 'name' parameter to route_apply data.
-        data['name'] = name
-    else:
-        try:
-            # Check if a Route with these parameters already exists
-            # without including the route name.
-            rq = k.route_query(service, protocols=data['protocols'],
-                               hosts=data['hosts'], paths=data['paths'], methods=data['methods'],
-                               snis=data['snis'], sources=data['sources'], destinations=data['destinations'])
-        except requests.HTTPError as e:
-            ansible_module.fail_json(
-                msg="Error querying Route: '{}'".format(e))
-
-        if len(rq) > 1:
-            ansible_module.fail_json(
-                msg='Multiple results for Route query', results=rq)
-
-        if rq:
-            orig = rq[0]
-
-    # Ensure the Route is configured.
+    # Ensure the Route is registered in Kong
     if state == "present":
-        if orig:
-            # Diff existing Route object against the target data if it already exists.
-            routediff = dotdiff(orig, data)
-            if routediff:
+
+        orig = k.route_get(name)
+        if orig is not None:
+            # Diff the remote Route object against the target data if it already exists
+            route_diff = dotdiff(orig, data)
+            # Set changed flag if there's a diff
+            if route_diff:
+                data['route_id'] = orig['id']
+                # Log modified state and diff result
                 changed = True
                 result['state'] = 'modified'
-                result['diff'] = [dict(prepared=render_list(routediff))]
+                result['diff'] = [dict(prepared=render_list(route_diff))]
 
         else:
-            # Insert a new Route, set changed.
+            # We're inserting a new Route, set changed
+            data['route_id'] = None
             changed = True
             result['state'] = 'created'
             result['diff'] = dict(
@@ -156,16 +126,22 @@ def main():
                 after_header=service, after=data
             )
 
+        # Only make changes when Ansible is not run in check mode
         if not ansible_module.check_mode and changed:
             try:
                 resp = k.route_apply(service, **data)
-            except requests.HTTPError as e:
-                ansible_module.fail_json(
-                    msg='Error applying Route: {}'.format(e))
+            except Exception as e:
+                err_msg = "Route configuration rejected by Kong: '{}'. " \
+                          "Please check configuration of the API you are trying to configure."
+                ansible_module.fail_json(msg=err_msg.format(e))
 
-    # Ensure the Route is deleted.
+    # Ensure the Route is deleted
     if state == "absent":
-        # Predict a change if the API exists.
+
+        # Check if the Route exists
+        orig = k.route_get(name)
+
+        # Predict a change if the API exists
         if orig:
             changed = True
             result['state'] = 'deleted'
@@ -174,19 +150,24 @@ def main():
                 after_header='<deleted>', after='\n'
             )
 
-            if not ansible_module.check_mode:
-                try:
-                    resp = k.route_delete(orig['id'])
-                except requests.HTTPError as e:
-                    ansible_module.fail_json(
-                        msg='Error deleting Route: {}'.format(e))
-
-    # Prepare module output
-    result.update(changed=changed)
+        # Only make changes when Ansible is not run in check mode
+        if not ansible_module.check_mode and orig:
+            # Issue delete call to the Kong API
+            try:
+                resp = k.route_delete(orig['id'])
+            except Exception as e:
+                ansible_module.fail_json(msg='Error deleting Route: {}'.format(e))
 
     # Pass through the API response if non-empty
     if resp:
         result['response'] = resp
+
+    # Prepare module output
+    result.update(
+        dict(
+            changed=changed,
+        )
+    )
 
     ansible_module.exit_json(**result)
 

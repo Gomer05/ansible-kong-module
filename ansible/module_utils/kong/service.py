@@ -1,45 +1,40 @@
-"""
-ansible.module_utils.kong.service implements Service operations on the Kong Admin API.
-
-:authors: Timo Beckers, Roman Komkov
-:license: MIT
-"""
-import requests
 from ansible.module_utils.kong import Kong
+import requests
 
 
 class KongService(Kong):
-    """KongService manages Service objects in Kong."""
 
     def service_list(self):
         """
         Get a list of Services configured in Kong.
 
-        :return: the Service object
+        :return: a dictionary of Services info
         :rtype: dict
         """
-        return self._get_multipart('services')
+        return self._get('services')
 
-    def service_get(self, idname):
+    def service_get(self, name):
         """
-        Look up a Service by name or ID.
+        Look up a specific Service in Kong.
 
-        :param idname: ID or name of the Service
-        :type idname: str
-        :return: the Service object
+        :param name: name of the Service to fetch
+        :type name: str
+        :return: all properties of the Service
         :rtype: dict
         """
         try:
-            r = self._get(['services', idname])
+            r = self._get(['services', name])
         except requests.HTTPError:
             return None
         else:
             return r
 
-    def service_apply(self, name, host, port=None, protocol=None, path=None, retries=None,
-                      connect_timeout=None, write_timeout=None, read_timeout=None):
+    def service_apply(self, name, host, port=None, protocol=None, path=None, retries=None, connect_timeout=None,
+                      write_timeout=None, read_timeout=None):
         """
-        Apply the Service configuration.
+        Declaratively apply the service configuration to the server.
+        Will choose to POST or PATCH depending on whether the service already exists or not.
+        See Kong service documentation for more info on the arguments of this method.
 
         :param name: name of the service to manage
         :type name: str
@@ -53,22 +48,23 @@ class KongService(Kong):
         :type path: str
         :param retries: number of retries to execute upon failure to proxy
         :type retries: int
-        :param connect_timeout: upstream connection timeout in milliseconds
+        :param connect_timeout: timeout in milliseconds for establishing a connection to the upstream server
         :type connect_timeout: int
-        :param write_timeout: upstream write timeout in milliseconds
+        :param write_timeout: timeout in milliseconds for establishing a connection to the upstream server
         :type write_timeout: int
-        :param read_timeout: upstream read timeout in milliseconds
+        :param read_timeout: timeout in milliseconds for establishing a connection to the upstream server
         :type read_timeout: int
-        :return: the resulting Service object
+        :return: interpreted Kong response
         :rtype: dict
         """
+
         if host is None:
             raise ValueError('host needs to be specified.')
 
         if name is None:
             raise ValueError('name needs to be specified.')
 
-        data = {
+        payload = {
             'name': name,
             'protocol': protocol,
             'host': host,
@@ -80,10 +76,13 @@ class KongService(Kong):
             'read_timeout': read_timeout
         }
 
+        # check if the service is already defined in Kong
         if self.service_get(name):
-            r = self._patch(['services', name], data=data)
+            # patch the resource at /services/{name}
+            r = self._patch(['services', name], data=payload)
         else:
-            r = self._post('services', data=data)
+            # post new service to the root of /services
+            r = self._post('services', data=payload)
 
         return r
 

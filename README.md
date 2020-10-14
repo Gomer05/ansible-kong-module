@@ -3,7 +3,8 @@
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
 A collection of Ansible modules to configure the [Kong](http://getkong.com) API gateway.
-Based on the original work of Cristo Crampton.
+This also supports Kong Enterprise.
+Based on the original work of Cristo Crampton and Timo Beckers
 
 For an introduction to Kong + Ansible, take a look at [Kong Up and Running](http://blog.toast38coza.me/kong-up-and-running).
 
@@ -14,7 +15,7 @@ This package aims to provide a stable, idempotent Ansible module for the Kong AP
 
 # Requirements
 
-- Ansible >=2.4
+- Ansible >=2.9
 - ansible-dotdiff
 
 # Usage
