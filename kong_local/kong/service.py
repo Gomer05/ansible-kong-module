@@ -1,4 +1,4 @@
-from kong import Kong
+from kong_local.kong import Kong
 import requests
 
 
@@ -30,7 +30,7 @@ class KongService(Kong):
             return r
 
     def service_apply(self, name, host, port=None, protocol=None, path=None, retries=None, connect_timeout=None,
-                      write_timeout=None, read_timeout=None):
+                      write_timeout=None, read_timeout=None, tags=None):
         """
         Declaratively apply the service configuration to the server.
         Will choose to POST or PATCH depending on whether the service already exists or not.
@@ -54,6 +54,8 @@ class KongService(Kong):
         :type write_timeout: int
         :param read_timeout: timeout in milliseconds for establishing a connection to the upstream server
         :type read_timeout: int
+        :param tags: list of tags to apply to the service
+        :type tags: list
         :return: interpreted Kong response
         :rtype: dict
         """
@@ -73,7 +75,8 @@ class KongService(Kong):
             'retries': retries,
             'connect_timeout': connect_timeout,
             'write_timeout': write_timeout,
-            'read_timeout': read_timeout
+            'read_timeout': read_timeout,
+            'tags': tags
         }
 
         # check if the service is already defined in Kong
