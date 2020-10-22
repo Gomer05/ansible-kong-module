@@ -1,8 +1,8 @@
 import uuid
-from kong import Kong
-from kong.service import KongService
-from kong.route import KongRoute
-from kong.consumer import KongConsumer
+from kong_local.kong import Kong
+from kong_local.kong.service import KongService
+from kong_local.kong.route import KongRoute
+from kong_local.kong.consumer import KongConsumer
 from six import iteritems
 
 

@@ -1,5 +1,4 @@
 from kong_local.kong.plugin import KongPlugin
-# from kong.helpers import *
 
 # Initialize output dictionary
 result = {}
@@ -26,12 +25,6 @@ def main():
     # Create KongAPI client instance
     k = KongPlugin(url, auth_user=auth_user, auth_pass=auth_pass)
 
-    # Contact Kong status endpoint
-    # kong_status_check(k)
-    # Default return values
-    changed = False
-    resp = ''
-
     # Check if the Plugin is already present
     pq = k.plugin_query(name=name, service_name=service, route_name=route, consumer_name=consumer)
 
@@ -45,9 +38,6 @@ def main():
 
     pq = k.plugin_apply(name=name, service_name=service, route_name=route, consumer_name=consumer, tags=tags)
     print(f"Got a plugin: {pq}")
-
-
-
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
