@@ -1,5 +1,5 @@
-from kong import Kong
-from kong.service import KongService
+from kong_local.kong import Kong
+from kong_local.kong.service import KongService
 import requests
 import json
 
@@ -98,7 +98,7 @@ class KongRoute(KongService, Kong):
         :type preserve_host: bool
         :param route_id: preserve the hostname of the upstream request
         :type route_id: string
-        :param tags:
+        :param tags: the tags that we want to assign to the route
         :type tags: list
         :return: interpreted Kong response
         :rtype: dict
