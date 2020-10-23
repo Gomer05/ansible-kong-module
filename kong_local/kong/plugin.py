@@ -157,7 +157,7 @@ class KongPlugin(KongRoute, KongConsumer, KongService, Kong):
         :type route_name: str
         :param consumer_name: name of the Consumer to configure the plugin for
         :type consumer_name: str
-        :param tags:
+        :param tags: list of tags to apply to the service
         :type tags: list
         :return: whether the Plugin resource was touched or not
         :rtype: bool
