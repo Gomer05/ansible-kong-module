@@ -136,7 +136,7 @@ class KongPlugin(KongRoute, KongConsumer, KongService, Kong):
 
         return result
 
-    def plugin_apply(self, name, config=None, service_name=None, route_name=None, consumer_name=False):
+    def plugin_apply(self, name, config=None, service_name=None, route_name=None, consumer_name=False, tags=None):
         """
         Idempotently apply the Plugin configuration on the server.
         See Kong API documentation for more info on the arguments of this method.
@@ -156,6 +156,8 @@ class KongPlugin(KongRoute, KongConsumer, KongService, Kong):
         :type route_name: str
         :param consumer_name: name of the Consumer to configure the plugin for
         :type consumer_name: str
+        :param tags: list of tags to apply to the service
+        :type tags: list
         :return: whether the Plugin resource was touched or not
         :rtype: bool
         """
@@ -191,6 +193,9 @@ class KongPlugin(KongRoute, KongConsumer, KongService, Kong):
                     "Consumer '{}' not found".format(consumer_name))
 
             data['consumer.id'] = c['id']
+
+        if tags:
+            data['tags'] = tags
 
         # Query the plugin with the given attributes.
         p = self.plugin_query(name=name, service_name=service_name,

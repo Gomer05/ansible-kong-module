@@ -9,7 +9,7 @@ from six import iteritems
 class KongPlugin(KongRoute, KongConsumer, KongService, Kong):
     """
     KongPlugin manages Plugin objects in Kong.
-    Uses KongServie, KongRoute and KongConsumer as mixins to query Services, Routes
+    Uses KongService, KongRoute and KongConsumer as mixings to query Services, Routes
     and Consumers.
     """
 
@@ -107,7 +107,6 @@ class KongPlugin(KongRoute, KongConsumer, KongService, Kong):
             plugin_consumer = plugin.get('consumer')
             plugin_service = plugin.get('service')
             plugin_route = plugin.get('route')
-            # print(f"consumer: {plugin_consumer}, service: {plugin_service}, route: {plugin_route}")
 
             if plugin.get('name') != name:
                 continue

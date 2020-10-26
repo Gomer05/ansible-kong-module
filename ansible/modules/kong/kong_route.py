@@ -44,6 +44,7 @@ def main():
             methods=dict(required=False, default=[], type='list'),
             strip_path=dict(required=False, default=True, type='bool'),
             preserve_host=dict(required=False, default=False, type='bool'),
+            tags=dict(required=False, type='list'),
             state=dict(required=False, default="present", choices=['present', 'absent'], type='str'),
         ),
         required_if=[
@@ -75,7 +76,8 @@ def main():
         'hosts',
         'paths',
         'strip_path',
-        'preserve_host'
+        'preserve_host',
+        'tags'
     ]
 
     # Extract api_fields from module parameters into separate dictionary

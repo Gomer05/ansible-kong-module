@@ -66,7 +66,7 @@ class KongConsumer(Kong):
         else:
             return r
 
-    def consumer_apply(self, username=None, custom_id=None):
+    def consumer_apply(self, username=None, custom_id=None, tags=None):
         """
         Declaratively install the consumer to the server.
 
@@ -74,6 +74,8 @@ class KongConsumer(Kong):
         :type username: str
         :param custom_id: custom ID of the consumer
         :type custom_id: str
+        :param tags: list of tags to apply to the service
+        :type tags: list
         :return: True if created, False if no action taken
         :rtype: bool
         """
@@ -88,6 +90,11 @@ class KongConsumer(Kong):
         idname = username if username is not None else custom_id
 
         data = {}
+        consumer_tags = {}
+
+        if tags:
+            data['tags'] = tags
+
 
         # Build the request, name and custom_id are mutually exclusive
         if username:
@@ -95,8 +102,12 @@ class KongConsumer(Kong):
         elif custom_id:
             data['custom_id'] = custom_id
 
-        # Only apply if the consumer does not already exist
-        if not self.consumer_get(idname):
+
+        # Only apply if the consumer does not already exist and tags don't match
+        result = self.consumer_get(idname)
+        if result:
+            consumer_tags = result['tags']
+        if not result or consumer_tags != tags:
             return self._put(['consumers', idname], data=data)
 
         return False
@@ -156,7 +167,7 @@ class KongConsumer(Kong):
 
         # Workaround for idempotency of basic-auth credentials
         if auth_type == 'basic-auth':
-            cq = self.credential_query(consumer_idname, auth_type, {'username':config.get('username')})
+            cq = self.credential_query(consumer_idname, auth_type, {'username': config.get('username')})
         else:
             cq = self.credential_query(consumer_idname, auth_type, config)
 

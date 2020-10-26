@@ -1,4 +1,5 @@
 from ansible.module_utils.basic import AnsibleModule
+from ansible.module_utils.dotdiff import dotdiff
 from ansible.module_utils.kong.consumer import KongConsumer
 from ansible.module_utils.kong.helpers import *
 
@@ -45,7 +46,7 @@ def main():
             kong_admin_username=dict(required=False, type='str'),
             kong_admin_password=dict(required=False, type='str', no_log=True),
             username=dict(required=True, type='list'),
-            # custom_id=dict(required=False, type='str'),
+            tags=dict(required=False, type='list'),
             state=dict(required=False, default="present", choices=['present', 'absent'], type='str'),
         ),
         supports_check_mode=True
@@ -66,6 +67,15 @@ def main():
     # Extract other arguments
     state = ansible_module.params['state']
     users = ansible_module.params['username']
+    tags = ansible_module.params['tags']
+
+    api_fields = [
+        'name',
+        'tags'
+    ]
+
+    # Extract api_fields from module parameters into separate dictionary
+    data = params_fields_lookup(ansible_module, api_fields)
 
     # Create KongAPI client instance
     k = KongConsumer(url, auth_user=auth_user, auth_pass=auth_pass)
@@ -83,35 +93,37 @@ def main():
 
         for username in users:
 
-            # Prepare data
-            data = {'username': username}
+            orig = k.consumer_get(username)
+            if orig is not None:
+                # Diff the remote Consumer object against the target data if it already exists
+                consumer_diff = dotdiff(orig, data)
+                resp = orig
+                # Set changed flag if there's a diff
+                if consumer_diff:
+                    data['username'] = orig['username']
+                    # Log modified state and diff result
+                    changed = True
+                    result['state'] = 'modified'
+                    result['diff'] = [dict(prepared=render_list(consumer_diff))]
 
-            # Check if the Consumer exists
-            c = k.consumer_get(username)
-            if c is None:
+            else:
                 # We're inserting a new Consumer, set changed
+                data['username'] = username
                 changed = True
                 result['state'] = 'created'
-
-                # Append diff entry
-                diff.append(dict(
+                result['diff'] = dict(
                     before_header='<undefined>', before='<undefined>\n',
                     after_header=username, after=data
-                ))
-            else:
-                resp = c
+                )
 
             # Only make changes when Ansible is not run in check mode
             if not ansible_module.check_mode and changed:
                 try:
-
-                    # Apply changes to Kong
                     resp = k.consumer_apply(**data)
-
                 except Exception as e:
-                    app_err = "Consumer rejected by Kong: '{}'. " \
-                              "Please check configuration of the Consumer you are trying to configure."
-                    ansible_module.fail_json(msg=app_err.format(e))
+                    err_msg = "Consumer configuration rejected by Kong: '{}'. " \
+                              "Please check configuration of the API you are trying to configure."
+                    ansible_module.fail_json(msg=err_msg.format(e))
 
     # Ensure the Consumer is deleted
     if state == "absent":
