@@ -53,6 +53,7 @@ def main():
             host=dict(required=True, type='str'),
             port=dict(required=False, default=80, type='int'),
             path=dict(required=False, type='str'),
+            tags=dict(required=False, type='list'),
             retries=dict(required=False, default=5, type='int'),
             connect_timeout=dict(required=False, default=60000, type='int'),
             write_timeout=dict(required=False, default=60000, type='int'),
@@ -78,7 +79,8 @@ def main():
         'retries',
         'connect_timeout',
         'write_timeout',
-        'read_timeout'
+        'read_timeout',
+        'tags'
     ]
 
     # Extract api_fields from module parameters into separate dictionary

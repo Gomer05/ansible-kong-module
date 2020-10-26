@@ -33,6 +33,7 @@ def main():
             route=dict(required=False, type='str'),
             consumer=dict(required=False, type='str'),
             config=dict(required=False, type='dict', default=dict()),
+            tags=dict(required=False, type='list'),
             state=dict(required=False, default="present", choices=['present', 'absent'], type='str'),
         ),
         supports_check_mode=True
@@ -53,6 +54,7 @@ def main():
     route = ansible_module.params['route']
     consumer = ansible_module.params['consumer']
     config = ansible_module.params['config']
+    tags = ansible_module.params['tags']
 
     # Create KongAPI client instance
     k = KongPlugin(url, auth_user=auth_user, auth_pass=auth_pass)
@@ -99,7 +101,8 @@ def main():
                     'route': route,
                     'consumer': consumer,
                     'state': 'created',
-                    'config': config
+                    'config': config,
+                    'tags': tags
                 }
             )
 
@@ -107,10 +110,10 @@ def main():
         if not ansible_module.check_mode and changed:
             try:
                 resp = k.plugin_apply(name=name, config=config, service_name=service, route_name=route,
-                                      consumer_name=consumer)
+                                      consumer_name=consumer, tags=tags)
             except requests.HTTPError as e:
                 ansible_module.fail_json(msg='Plugin configuration rejected by Kong.', name=name, config=config,
-                                         service=service, route=route, consumer=consumer, response=e.response._content)
+                                         service=service, route=route, consumer=consumer, tags=tags, response=e.response._content)
 
     # Delete the Plugin if it exists
     if state == "absent" and pq:
