@@ -74,7 +74,7 @@ class KongRoute(KongService, Kong):
         return result[0] if result else None
 
     def route_apply(self, service_name, name=None, hosts=None, paths=None, methods=None, protocols=None, strip_path=False,
-                    preserve_host=False, route_id=None):
+                    preserve_host=False, route_id=None, tags=None):
         """
         Declaratively apply the Route configuration to the server.
         Will choose to POST or PATCH depending on whether the API already exists or not.
@@ -98,6 +98,8 @@ class KongRoute(KongService, Kong):
         :type preserve_host: bool
         :param route_id: preserve the hostname of the upstream request
         :type route_id: string
+        :param tags: the tags that we want to assign to the route
+        :type tags: list
         :return: interpreted Kong response
         :rtype: dict
         """
@@ -121,12 +123,11 @@ class KongRoute(KongService, Kong):
             'paths': paths,
             'strip_path': strip_path,
             'preserve_host': preserve_host,
-            'service': {
-                'id': s.get('id')
-            }
+            'service': {'id': s.get('id')},
+            'tags': tags
         }
 
-        headers={
+        headers = {
             "content-type": "application/json"
         }
         # check if the API is already defined in Kong
